@@ -155,7 +155,6 @@
         let tempChartInstance = null;
         let humidityChartInstance = null;
 
-        // Initialize Dark-themed Charts
         function initCharts() {
             const tempCtx = document.getElementById('tempChart').getContext('2d');
             
@@ -236,7 +235,6 @@
             });
         }
 
-        // Parse CSV Data
         function parseCSV(text) {
             const lines = text.split('\n').filter(line => line.trim() !== '');
             const result = [];
@@ -276,6 +274,22 @@
         }
 
         function processAndDisplayData(headers, rows) {
+            // ระบบตรวจสอบตำแหน่งคอลัมน์อัตโนมัติจาก Header
+            let timeIdx = 0;
+            let tempIdx = 1;
+            let humIdx = 2;
+
+            headers.forEach((h, idx) => {
+                const headerText = h.toLowerCase();
+                if (headerText.includes('time') || headerText.includes('date') || headerText.includes('stamp')) {
+                    timeIdx = idx;
+                } else if (headerText.includes('temp')) {
+                    tempIdx = idx;
+                } else if (headerText.includes('hum')) {
+                    humIdx = idx;
+                }
+            });
+
             const labels = [];
             const tempData = [];
             const humidityData = [];
@@ -283,45 +297,44 @@
             const tableBody = document.getElementById('data-table-body');
             tableBody.innerHTML = '';
 
-            // Process rows in reverse order to display latest data on top in the table
             const reversedRows = [...rows].reverse();
 
             rows.forEach((row, index) => {
-                const timestamp = row[0] || `Row #${index + 1}`;
-                const temp = parseFloat(row[1]) || 0;
-                const humidity = parseFloat(row[2]) || 0;
+                const timestamp = row[timeIdx] || `Row #${index + 1}`;
+                const temp = parseFloat(row[tempIdx]) || 0;
+                const humidity = parseFloat(row[humIdx]) || 0;
 
                 labels.push(timestamp);
                 tempData.push(temp);
                 humidityData.push(humidity);
             });
 
-            // Populate Table
+            // แสดงตารางข้อมูล
             reversedRows.forEach((row) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-zinc-800/30 transition-colors";
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-mono text-xs text-zinc-400">${row[0] || '-'}</td>
-                    <td class="px-6 py-4 font-semibold text-amber-400">${row[1] || '--'} °C</td>
-                    <td class="px-6 py-4 font-semibold text-violet-400">${row[2] || '--'} %</td>
+                    <td class="px-6 py-4 font-mono text-xs text-zinc-400">${row[timeIdx] || '-'}</td>
+                    <td class="px-6 py-4 font-semibold text-amber-400">${row[tempIdx] || '--'} °C</td>
+                    <td class="px-6 py-4 font-semibold text-violet-400">${row[humIdx] || '--'} %</td>
                 `;
                 tableBody.appendChild(tr);
             });
 
-            // Update Cards with Latest Entry
+            // อัปเดตข้อมูลการ์ดล่าสุด
             if (rows.length > 0) {
                 const lastRow = rows[rows.length - 1];
-                document.getElementById('latest-temp').textContent = lastRow[1] || '--';
-                document.getElementById('latest-humidity').textContent = lastRow[2] || '--';
+                document.getElementById('latest-temp').textContent = lastRow[tempIdx] || '--';
+                document.getElementById('latest-humidity').textContent = lastRow[humIdx] || '--';
                 
-                const lastTime = lastRow[0] || 'Recently';
+                const lastTime = lastRow[timeIdx] || 'Recently';
                 document.getElementById('temp-status').innerHTML = `<i class="fa-regular fa-clock mr-1.5"></i> Updated: ${lastTime}`;
                 document.getElementById('humidity-status').innerHTML = `<i class="fa-regular fa-clock mr-1.5"></i> Updated: ${lastTime}`;
             }
 
             document.getElementById('record-count').textContent = `${rows.length} records`;
 
-            // Update Charts
+            // อัปเดตกราฟ
             tempChartInstance.data.labels = labels;
             tempChartInstance.data.datasets[0].data = tempData;
             tempChartInstance.update();
@@ -334,7 +347,6 @@
         window.onload = () => {
             initCharts();
             fetchData();
-            // Auto refresh every 30 seconds
             setInterval(fetchData, 30000);
         };
     </script>
