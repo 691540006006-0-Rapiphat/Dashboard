@@ -274,22 +274,6 @@
         }
 
         function processAndDisplayData(headers, rows) {
-            // ระบบตรวจสอบตำแหน่งคอลัมน์อัตโนมัติจาก Header
-            let timeIdx = 0;
-            let tempIdx = 1;
-            let humIdx = 2;
-
-            headers.forEach((h, idx) => {
-                const headerText = h.toLowerCase();
-                if (headerText.includes('time') || headerText.includes('date') || headerText.includes('stamp')) {
-                    timeIdx = idx;
-                } else if (headerText.includes('temp')) {
-                    tempIdx = idx;
-                } else if (headerText.includes('hum')) {
-                    humIdx = idx;
-                }
-            });
-
             const labels = [];
             const tempData = [];
             const humidityData = [];
@@ -300,34 +284,52 @@
             const reversedRows = [...rows].reverse();
 
             rows.forEach((row, index) => {
-                const timestamp = row[timeIdx] || `Row #${index + 1}`;
-                const temp = parseFloat(row[tempIdx]) || 0;
-                const humidity = parseFloat(row[humIdx]) || 0;
+                const timestamp = row[0] || `Row #${index + 1}`;
+                
+                // กรองเฉพาะค่าที่เป็นตัวเลขจริงในแถวนั้นๆ
+                const numericValues = row.map(v => parseFloat(v)).filter(v => !isNaN(v));
+                
+                const temp = numericValues.length > 0 ? numericValues[0] : 0;
+                const humidity = numericValues.length > 1 ? numericValues[1] : 0;
 
                 labels.push(timestamp);
                 tempData.push(temp);
                 humidityData.push(humidity);
             });
 
-            // แสดงตารางข้อมูล
+            // วาดตารางข้อมูล
             reversedRows.forEach((row) => {
+                const numericValues = row.map(v => parseFloat(v)).filter(v => !isNaN(v));
+                const tempVal = numericValues.length > 0 ? numericValues[0] : '--';
+                const humVal = numericValues.length > 1 ? numericValues[1] : '--';
+
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-zinc-800/30 transition-colors";
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-mono text-xs text-zinc-400">${row[timeIdx] || '-'}</td>
-                    <td class="px-6 py-4 font-semibold text-amber-400">${row[tempIdx] || '--'} °C</td>
-                    <td class="px-6 py-4 font-semibold text-violet-400">${row[humIdx] || '--'} %</td>
+                    <td class="px-6 py-4 font-mono text-xs text-zinc-400">${row[0] || '-'}</td>
+                    <td class="px-6 py-4 font-semibold text-amber-400">${tempVal} °C</td>
+                    <td class="px-6 py-4 font-semibold text-violet-400">${humVal} %</td>
                 `;
                 tableBody.appendChild(tr);
             });
 
-            // อัปเดตข้อมูลการ์ดล่าสุด
+            // อัปเดตการ์ดแสดงผลแถวล่าสุด
             if (rows.length > 0) {
                 const lastRow = rows[rows.length - 1];
-                document.getElementById('latest-temp').textContent = lastRow[tempIdx] || '--';
-                document.getElementById('latest-humidity').textContent = lastRow[humIdx] || '--';
+                const lastNumerics = lastRow.map(v => parseFloat(v)).filter(v => !isNaN(v));
+
+                if (lastNumerics.length >= 2) {
+                    document.getElementById('latest-temp').textContent = lastNumerics[0];
+                    document.getElementById('latest-humidity').textContent = lastNumerics[1];
+                } else if (lastNumerics.length === 1) {
+                    document.getElementById('latest-temp').textContent = lastNumerics[0];
+                    document.getElementById('latest-humidity').textContent = '--';
+                } else {
+                    document.getElementById('latest-temp').textContent = '--';
+                    document.getElementById('latest-humidity').textContent = '--';
+                }
                 
-                const lastTime = lastRow[timeIdx] || 'Recently';
+                const lastTime = lastRow[0] || 'Recently';
                 document.getElementById('temp-status').innerHTML = `<i class="fa-regular fa-clock mr-1.5"></i> Updated: ${lastTime}`;
                 document.getElementById('humidity-status').innerHTML = `<i class="fa-regular fa-clock mr-1.5"></i> Updated: ${lastTime}`;
             }
